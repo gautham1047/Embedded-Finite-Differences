@@ -23,13 +23,13 @@ class Grid_1D:
         func_vectorized = np.vectorize(lambdify([x_symbol], func))
         self.values = func_vectorized(self.x)
 
-    def set_boundary_dirichlet(self, lower_val: float = None, upper_val: float = None) -> None:
+    def set_boundary_dirichlet(self, lower_val: float = None, upper_val: float = None) -> None: # type: ignore
         if lower_val is not None:
             self.values[0] = lower_val
         if upper_val is not None:
             self.values[-1] = upper_val
 
-    def set_boundary_neumann(self, lower_deriv: float = None, upper_deriv: float = None,
+    def set_boundary_neumann(self, lower_deriv: float = None, upper_deriv: float = None, # type: ignore
                            accuracy_order: int = 1) -> None:
         # Validate grid size
         min_points = accuracy_order + 2
@@ -142,12 +142,16 @@ def _evaluate_bc_func(func, spatial_coords, time):
 
 class Grid_2D:
     def __init__(self, x_points: int, y_points: int,
-                 x_i: float = 0, x_f: float = 1, y_i: float = 0, y_f: float = 1):
+                 x_i: float = 0, x_f: float = 1, y_i: float = 0, y_f: float = 1,
+                 accuracy_order: int = 2, strategy: str = 'custom_stencil'):
         self.x_grid = Grid_1D(x_points, x_i, x_f)
         self.y_grid = Grid_1D(y_points, y_i, y_f)
 
         self.x_points = x_points
         self.y_points = y_points
+
+        self.accuracy_order = accuracy_order
+        self.strategy = strategy
 
         # Meshgrid for coordinate points
         self.xv, self.yv = np.meshgrid(self.x_grid.x, self.y_grid.x)
@@ -160,7 +164,7 @@ class Grid_2D:
         values_2d = func_vectorized(self.xv, self.yv)
         self.values = values_2d.flatten()
 
-    def set_boundary_dirichlet(self, x_0_func: Callable = None, x_L_func: Callable = None,
+    def set_boundary_dirichlet(self, x_0_func: Callable = None, x_L_func: Callable = None, # type: ignore
                               y_0_func: Callable = None, y_L_func: Callable = None,
                               time: float = None) -> None:
         # Bottom and top boundaries (only if specified)
@@ -185,10 +189,12 @@ class Grid_2D:
 
     def set_boundary_neumann(self, x_0_deriv: Callable = None, x_L_deriv: Callable = None,
                             y_0_deriv: Callable = None, y_L_deriv: Callable = None,
-                            accuracy_order: int = 1, corner_mode: str = 'average',
+                            corner_mode: str = 'average',
                             time: float = None) -> None:
         # corner_mode: How to handle corners ('average', 'x_priority', 'y_priority')
         # time: Current time value. If None, only spatial coordinates are passed to functions.
+
+        accuracy_order = self.accuracy_order
 
         # Validate grid sizes
         min_x_points = accuracy_order + 2
@@ -312,18 +318,17 @@ class Grid_2D:
                     # Only y boundary affected this corner
                     self.values[corner_idx] = corner_values_from_y[corner_idx]
 
-    def apply_dirichlet_mask(self, bc: DirichletMask) -> None:
-        mask = bc.get_mask(self)
-        self.values[mask.flatten()] = bc.dirichlet_value
-
-    def apply_boundary_conditions(self, bc: BoundaryConditions | DirichletMask, accuracy_order: int = 1,
-                                  corner_mode: str = 'average', time: float = None) -> None:
+    def apply_boundary_conditions(self, bc: BoundaryConditions | DirichletMask,
+                                  corner_mode: str = 'average', time: float = None,
+                                  pseudo_boundary_n: int = 1) -> None:
         # corner_mode: How to handle corners ('average', 'x_priority', 'y_priority')
         # time: Current time value. If None, only spatial coordinates are passed to functions.
-            
+        # pseudo_boundary_n: stencil half-width used to detect pseudo-boundary points
+        #   for DirichletMask BCs (passed through to apply_dirichlet_mask).
+
         # handle DirichletMask case separately
         if isinstance(bc, DirichletMask):
-            self.apply_dirichlet_mask(bc)
+            self.apply_dirichlet_mask(bc, n=pseudo_boundary_n)
             return
 
         values_2d = self.values.reshape((self.y_points, self.x_points))
@@ -350,28 +355,68 @@ class Grid_2D:
                 'x_L_deriv': neumann_bcs.get('x_L'),
                 'y_0_deriv': neumann_bcs.get('y_0'),
                 'y_L_deriv': neumann_bcs.get('y_L'),
-                'accuracy_order': accuracy_order,
                 'corner_mode': corner_mode,
                 'time': time
             }
             self.set_boundary_neumann(**neumann_args)
 
-    def derivative_matrix(self, order: int = 2, direction: str = 'xy', accuracy_order: int = 2,
-                         strategy: str = 'custom_stencil') -> np.ndarray:
+    def derivative_matrix(self, order: int = 2, direction: str = 'xy') -> np.ndarray:
         if direction == 'xy':
             if order != 2:
                 raise ValueError("Laplacian only defined for second derivatives (order=2)")
-            A_x = self.x_grid.derivative_matrix(order=2, accuracy_order=accuracy_order, strategy=strategy)
-            A_y = self.y_grid.derivative_matrix(order=2, accuracy_order=accuracy_order, strategy=strategy)
+            A_x = self.x_grid.derivative_matrix(order=2, accuracy_order=self.accuracy_order, strategy=self.strategy)
+            A_y = self.y_grid.derivative_matrix(order=2, accuracy_order=self.accuracy_order, strategy=self.strategy)
             return np.kron(A_y, np.eye(self.x_points)) + np.kron(np.eye(self.y_points), A_x)
         elif direction == 'x':
-            D_x = self.x_grid.derivative_matrix(order=order, accuracy_order=accuracy_order, strategy=strategy)
+            D_x = self.x_grid.derivative_matrix(order=order, accuracy_order=self.accuracy_order, strategy=self.strategy)
             return np.kron(np.eye(self.y_points), D_x)
         elif direction == 'y':
-            D_y = self.y_grid.derivative_matrix(order=order, accuracy_order=accuracy_order, strategy=strategy)
+            D_y = self.y_grid.derivative_matrix(order=order, accuracy_order=self.accuracy_order, strategy=self.strategy)
             return np.kron(D_y, np.eye(self.x_points))
         else:
             raise ValueError(f"Invalid direction '{direction}'. Must be 'xy', 'x', or 'y'")
 
-    def laplacian_matrix(self, accuracy_order: int = 2, strategy: str = 'custom_stencil') -> np.ndarray:
-        return self.derivative_matrix(order=2, direction='xy', accuracy_order=accuracy_order, strategy=strategy)
+    def laplacian_matrix(self) -> np.ndarray:
+        return self.derivative_matrix(order=2, direction='xy')
+
+    def apply_dirichlet_mask(self, bc: DirichletMask, n: int = 1) -> None:
+        """Enforce bc.dirichlet_value at all masked (exterior) points.
+
+        This is called by apply_boundary_conditions when the BC is a DirichletMask.
+        It provides the per-step enforcement needed by the heat equation (Euler/RK4)
+        path.  The leapfrog path never calls this method — BCs are baked into the
+        precomputed matrix A via preprocess_kp().
+
+        n : stencil half-width — used to pre-warm the pseudo-boundary cache so
+            the first call to compute_pseudo_boundary_derivative is not cold.
+        """
+        mask = bc.get_mask(self)
+        self.values[mask.flatten()] = bc.dirichlet_value
+        bc.get_pseudo_boundary_points(self, n)  # pre-warm cache
+
+
+class VelocityGrid(Grid_2D):
+    """Grid_2D subclass that owns a velocity field for second-order (hyperbolic) PDEs.
+
+    The velocity field `self.velocity` mirrors the layout of `self.values` (flat,
+    row-major).  When a DirichletMask boundary condition is applied, both the
+    displacement field (`self.values`) and the velocity field (`self.velocity`)
+    are enforced at masked points, using `bc.dirichlet_value` and
+    `bc.velocity_value` respectively.
+
+    DEPRECATED for wave equation: Use plain Grid_2D with solve_leapfrog() instead.
+    VelocityGrid + solve_newmark() remains supported for the damped wave equation
+    and any other scenario that requires explicit velocity-field tracking.
+    """
+
+    def __init__(self, x_points: int, y_points: int,
+                 x_i: float = 0, x_f: float = 1,
+                 y_i: float = 0, y_f: float = 1,
+                 accuracy_order: int = 2, strategy: str = 'custom_stencil'):
+        super().__init__(x_points, y_points, x_i, x_f, y_i, y_f, accuracy_order, strategy)
+        self.velocity = np.zeros(x_points * y_points)
+
+    def apply_dirichlet_mask(self, bc: DirichletMask, n: int = 1) -> None:
+        super().apply_dirichlet_mask(bc, n)
+        mask = bc.get_mask(self)
+        self.velocity[mask.flatten()] = bc.velocity_value
