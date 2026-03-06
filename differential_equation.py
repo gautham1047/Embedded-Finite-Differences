@@ -188,3 +188,60 @@ class DifferentialEquation:
     def get_source_term(self) -> sp.Expr:
         terms = self.extract_spatial_terms()
         return terms.get('source', 0)
+
+class HeatEquation(DifferentialEquation):
+    def __init__(self, alpha=1.0):
+        x, y, t = sp.symbols('x y t')
+        u = sp.Function('u')
+
+        # du/dt = alpha * (d²u/dx² + d²u/dy²)
+        lhs = sp.diff(u(x, y), t)
+        rhs = alpha * (sp.diff(u(x, y), x, x) + sp.diff(u(x, y), y, y))
+
+        super().__init__(rhs=rhs, lhs=lhs, u_symbol=u(x, y), x_symbol=x, y_symbol=y, t_symbol=t, time_derivative_order=1)
+
+    def getSymbols(self):
+        return (self.x_symbol, self.y_symbol, self.t_symbol, self.u_symbol)
+
+    def getXSymbol(self):
+        return self.x_symbol
+
+    def getYSymbol(self):
+        return self.y_symbol
+
+    def getTSymbol(self):
+        return self.t_symbol
+
+    def getUSymbol(self):
+        return self.u_symbol
+
+
+class WaveEquation(DifferentialEquation):
+    def __init__(self, c, gamma = 0):
+        # Define symbols
+        x, y, t = sp.symbols('x y t')
+        u = sp.Function('u')
+
+        # d2u/dt2 + gamma·du/dt
+        lhs = sp.diff(u(x, y), t, t) + gamma * sp.diff(u(x, y), t)
+
+        # c^2 (d2u/dx2 + d2u/dy2)
+        rhs = c ** 2 * (sp.diff(u(x, y), x, x) + sp.diff(u(x, y), y, y))
+
+
+        super().__init__(rhs=rhs, lhs=lhs, u_symbol=u(x,y), x_symbol=x, y_symbol=y, t_symbol=t, time_derivative_order=2)
+
+    def getSymbols(self):
+        return (self.x_symbol, self.y_symbol, self.t_symbol, self.u_symbol)
+    
+    def getXSymbol(self):
+        return self.x_symbol
+    
+    def getYSymbol(self):
+        return self.y_symbol
+    
+    def getTSymbol(self):
+        return self.t_symbol
+    
+    def getUSymbol(self):
+        return self.u_symbol

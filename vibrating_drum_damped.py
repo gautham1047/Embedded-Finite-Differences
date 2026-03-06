@@ -1,17 +1,12 @@
-import numpy as np
-from sympy import symbols, diff, exp, Function
+import os
+from sympy import exp
 from grid import VelocityGrid
 from boundary_conditions import DirichletMask
-from differential_equation import DifferentialEquation
+from differential_equation import WaveEquation
 from solver import Solver
 
-# Define symbols
-x, y, t = symbols('x y t')
-u = Function('u')
-
 # Physical parameters
-c_squared = 1.0      
-gamma = 0.5         
+c = 1.0      
 drum_radius = 1.0   
 
 # Grid parameters
@@ -23,21 +18,11 @@ x_points = 40
 y_points = 40
 t_points = 300
 
-# d2u/dt2 + gamma·du/dt
-lhs = diff(u(x, y), t, t) + gamma * diff(u(x, y), t)
+out_dir = 'vibrating_drum_damped'
+os.makedirs(out_dir, exist_ok=True)
 
-# c²(d2u/dx2 + d2u/dy2)
-rhs = c_squared * (diff(u(x, y), x, x) + diff(u(x, y), y, y))
-
-equation = DifferentialEquation(
-    rhs=rhs,
-    lhs=lhs,
-    u_symbol=u(x, y),
-    x_symbol=x,
-    y_symbol=y,
-    t_symbol=t,
-    time_derivative_order=2
-)
+equation = WaveEquation(c=c, gamma=0.5) # dampening coeff = 0.5
+x, y, _, _ = equation.getSymbols() # for the mask function
 
 # Create grid
 grid = VelocityGrid(x_points, y_points, x_i, x_f, y_i, y_f, accuracy_order=2, strategy='custom_stencil')
@@ -74,5 +59,5 @@ solution = solver.solve_newmark(beta=0.25, gamma=0.5)
 
 print("animating...")
 
-solver.animate('vibrating_drum/vibrating_drum_damped_solution.gif')
-solver.animate_velocity('vibrating_drum/vibrating_drum_damped_velocity.gif')
+solver.animate(f'{out_dir}/solution.gif')
+solver.animate_velocity(f'{out_dir}/velocity.gif')

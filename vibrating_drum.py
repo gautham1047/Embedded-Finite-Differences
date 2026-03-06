@@ -1,15 +1,16 @@
+import os
 import numpy as np
-from sympy import symbols, diff, exp, Function
+from sympy import exp
 from grid import Grid_2D
 from boundary_conditions import DirichletMask
-from differential_equation import DifferentialEquation
+from differential_equation import WaveEquation
 from solver import Solver
 
-x, y, t = symbols('x y t')
-u = Function('u')
+out_dir = 'vibrating_drum'
+os.makedirs(out_dir, exist_ok=True)
 
-c_squared = 1.0     
-drum_radius = 1.0   
+c = 1.0
+drum_radius = 1.0
 
 # Grid parameters
 x_i, x_f = (-drum_radius, drum_radius)
@@ -18,23 +19,10 @@ t_i, t_f = (0, 5.0)
 
 x_points = 40
 y_points = 40
-t_points = 300
+t_points = 500
 
-# d2u/dt2
-lhs = diff(u(x, y), t, t)
-
-# c^2 * (d2u/dx2 + d2u/dy2)
-rhs = c_squared * (diff(u(x, y), x, x) + diff(u(x, y), y, y))
-
-equation = DifferentialEquation(
-    rhs=rhs,
-    lhs=lhs,
-    u_symbol=u(x, y),
-    x_symbol=x,
-    y_symbol=y,
-    t_symbol=t,
-    time_derivative_order=2
-)
+equation = WaveEquation(c)
+x, y, _, _ = equation.getSymbols()
 
 grid = Grid_2D(x_points, y_points, x_i, x_f, y_i, y_f,
                accuracy_order=2, strategy='custom_stencil')
@@ -63,8 +51,8 @@ solver = Solver(
 )
 
 h = grid.x_grid.delta
-cfl = solver.t_delta / h
-print(f"CFL = Δt/h = {cfl:.4f}  (must be < {1/np.sqrt(2):.4f} for stability)")
+cfl = c * solver.t_delta / h
+print(f"CFL = c·Δt/h = {cfl:.4f}  (must be < {1/np.sqrt(2):.4f} for stability)")
 if cfl >= 1.0 / np.sqrt(2):
     print("bad CFL condition - Reduce t_points or increase grid resolution.")
 
@@ -73,4 +61,4 @@ solution = solver.solve_leapfrog(gamma=0.25)
 
 print("animating...")
 
-solver.animate('vibrating_drum/vibrating_drum_solution.gif')
+solver.animate(f'{out_dir}/solution.gif')
