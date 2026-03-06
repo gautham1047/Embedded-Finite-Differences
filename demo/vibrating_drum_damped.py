@@ -1,4 +1,7 @@
 import os
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'solver_lib'))
+
 from sympy import exp
 from grid import VelocityGrid
 from boundary_conditions import DirichletMask
@@ -18,7 +21,7 @@ x_points = 40
 y_points = 40
 t_points = 300
 
-out_dir = 'vibrating_drum_damped'
+out_dir = os.path.join(os.path.dirname(__file__), 'vibrating_drum_damped')
 os.makedirs(out_dir, exist_ok=True)
 
 equation = WaveEquation(c=c, gamma=0.5) # dampening coeff = 0.5

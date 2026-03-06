@@ -1,12 +1,15 @@
 import os
+import sys
 import numpy as np
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'solver_lib'))
+
 from sympy import exp
 from grid import Grid_2D
 from boundary_conditions import DirichletMask
 from differential_equation import WaveEquation
 from solver import Solver
 
-out_dir = 'vibrating_drum'
+out_dir = os.path.join(os.path.dirname(__file__), 'vibrating_drum')
 os.makedirs(out_dir, exist_ok=True)
 
 c = 1.0
