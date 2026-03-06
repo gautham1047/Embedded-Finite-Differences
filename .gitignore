@@ -1,2 +1,4 @@
 *.png
 *.gif
+*.pyc
+*.json
