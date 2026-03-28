@@ -11,7 +11,7 @@ A finite-difference solver for parabolic (heat) and hyperbolic (wave) PDEs on no
         <em>Vibrating drum</em>
       </td>
       <td align="center">
-        <img src="README/velocity.gif" alt="Vibrating drum (damped)" width="400"/>
+        <img src="README/velocity.gif" alt="Vibrating drum velocity" width="400"/>
         <br/>
         <em>Vibrating drum (damped)</em>
       </td>
