@@ -31,7 +31,7 @@ A finite-difference solver for parabolic (heat) and hyperbolic (wave) PDEs on no
 
 ## File Overview
 
-### [`fd_coeffs.py`](fd_coeffs.py) — FD Coefficient Helpers
+### [`fd_coeffs.py`](solver_lib/fd_coeffs.py) — FD Coefficient Helpers
 
 Computes finite-difference coefficients from arbitrary stencils.
 
@@ -46,7 +46,7 @@ Computes finite-difference coefficients from arbitrary stencils.
 
 ---
 
-### [`grid.py`](grid.py) — Grid and Derivative Matrices
+### [`grid.py`](solver_lib/grid.py) — Grid and Derivative Matrices
 
 #### `Grid_1D`
 Uniform 1D grid, used to streamline Grid2D. Key methods:
@@ -67,7 +67,7 @@ Adds a `velocity` flat array. Required by `solve_newmark()`;
 
 ---
 
-### [`boundary_conditions.py`](boundary_conditions.py) — BC Specification
+### [`boundary_conditions.py`](solver_lib/boundary_conditions.py) — BC Specification
 
 #### `BoundaryConditions`
 Axis-aligned Dirichlet/Neumann on 4 rectangle edges. Detects time-dependence automatically via `inspect.signature`.
@@ -87,7 +87,7 @@ Geometric mask BC for irregular domains. `mask_function(grid)` returns a bool ar
 
 ---
 
-### [`differential_equation.py`](differential_equation.py) — Symbolic PDE
+### [`differential_equation.py`](solver_lib/differential_equation.py) — Symbolic PDE
 
 #### `DifferentialEquation`
 Parses a SymPy RHS expression for a linear PDE.
@@ -101,7 +101,7 @@ Convenience subclass: `WaveEquation(c, gamma=0)` builds `u_tt + γ·u_t = c^2 �
 
 ---
 
-### [`solver.py`](solver.py) — Time-Stepping
+### [`solver.py`](solver_lib/solver.py) — Time-Stepping
 
 #### `Solver`
 `Solver(equation, grid, bc, t_i, t_f, t_points, initial_condition, initial_velocity=None)`
@@ -129,7 +129,7 @@ Convenience subclass: `WaveEquation(c, gamma=0)` builds `u_tt + γ·u_t = c^2 �
 
 ---
 
-### [`animate.py`](animate.py) — Animation
+### [`animate.py`](solver_lib/animate.py) — Animation
 
 - `gen_anim(data, grid, file_name, z_label="u", duration=5.0)` — 3D `plot_trisurf` animation over solution history; colormap `'Wistia'`
 - `gen_velocity_anim(velocity_data, grid, file_name, duration=5.0)` — same for velocity; colormap `'viridis'`
